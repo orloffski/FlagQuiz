@@ -2,16 +2,11 @@ package com.deitel.flagquiz;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
+import android.app.Fragment;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -38,7 +33,7 @@ import java.util.Set;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class MainActivityFragment extends Fragment {
+public class MainActivityFragment extends Fragment implements FinishDialogFragment.OnResetQuizListener{
 
     private static final String TAG = "FlagQuiz Activity";
     private static final int FLAG_IN_QUIZ = 10;
@@ -282,26 +277,7 @@ public class MainActivityFragment extends Fragment {
                 disableButtons();
 
                 if(correctAnswers == FLAG_IN_QUIZ){
-                    DialogFragment quizResults = new DialogFragment(){
-                        @NonNull
-                        @Override
-                        public Dialog onCreateDialog(Bundle savedInstanceState) {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                            builder.setMessage(getString(R.string.results, totalGuesses, (1000 / (double) totalGuesses)));
-
-                            builder.setPositiveButton(R.string.reset_quiz, new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-                                    resetQuiz();
-                                }
-                            });
-
-                            return builder.create();
-                        }
-                    };
-
-                    quizResults.setCancelable(false);
-                    quizResults.show(getFragmentManager(), "quiz results");
+                    createDialog();
                 }else{
                     handler.postDelayed(new Runnable() {
                         @Override
@@ -335,5 +311,18 @@ public class MainActivityFragment extends Fragment {
 
     public void loadOldData(){
         loadNextFlag(false);
+    }
+
+    @Override
+    public void onResetQuiz() {
+        resetQuiz();
+    }
+
+    private void createDialog(){
+        FinishDialogFragment quizResults = FinishDialogFragment
+                .newInstance(getString(R.string.results, totalGuesses, (1000 / (double) totalGuesses)));
+        quizResults.setTargetFragment(this, 0);
+        quizResults.setCancelable(false);
+        quizResults.show(getFragmentManager(), quizResults.getClass().getName());
     }
 }
