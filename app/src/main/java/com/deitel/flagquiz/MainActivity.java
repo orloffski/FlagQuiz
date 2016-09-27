@@ -53,12 +53,9 @@ public class MainActivity extends AppCompatActivity {
         MainActivityFragment quizFragment  = (MainActivityFragment) getFragmentManager().findFragmentById(R.id.quizFragment);
 
         if(preferencesChanged){
-            updateFragmentUI(quizFragment);
-            quizFragment.resetQuiz();
-            preferencesChanged = false;
+            updateFragmentUI(quizFragment, true, true, true);
         }else{
-            updateFragmentUI(quizFragment);
-            quizFragment.loadOldData();
+            updateFragmentUI(quizFragment, true, true, false);
         }
     }
 
@@ -96,20 +93,20 @@ public class MainActivity extends AppCompatActivity {
             MainActivityFragment quizFragment = (MainActivityFragment) getFragmentManager().findFragmentById(R.id.quizFragment);
 
             if(s.equals(CHOICES)){
-                quizFragment.updateGuessRows(sharedPreferences);
-                quizFragment.resetQuiz();
+                updateFragmentUI(quizFragment, true, false, true);
             }
             else if(s.equals(REGIONS)){
                 Set<String> regions = sharedPreferences.getStringSet(REGIONS, null);
 
                 if(regions != null && regions.size() > 0){
-                    quizFragment.updateRegions(sharedPreferences);
-                    quizFragment.resetQuiz();
+                    updateFragmentUI(quizFragment, false, true, true);
                 }else{
                     SharedPreferences.Editor editor = sharedPreferences.edit();
                     regions.add(getString(R.string.default_region));
                     editor.putStringSet(REGIONS, regions);
                     editor.apply();
+
+                    updateFragmentUI(quizFragment, false, true, true);
 
                     Toast.makeText(MainActivity.this, R.string.default_region_message, Toast.LENGTH_SHORT).show();
                 }
@@ -119,10 +116,18 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private void updateFragmentUI(MainActivityFragment quizFragment){
-        quizFragment.updateGuessRows(PreferenceManager.getDefaultSharedPreferences(this));
-        quizFragment.updateRegions(PreferenceManager.getDefaultSharedPreferences(this));
-    }
+    private void updateFragmentUI(MainActivityFragment quizFragment, boolean updateGuessRows, boolean updateRegions, boolean resetQuiz){
+        if(updateGuessRows)
+            quizFragment.updateGuessRows(PreferenceManager.getDefaultSharedPreferences(this));
 
-    public void run(){}
+        if(updateRegions)
+            quizFragment.updateRegions(PreferenceManager.getDefaultSharedPreferences(this));
+
+        if(resetQuiz)
+            quizFragment.resetQuiz();
+        else
+            quizFragment.loadOldData();
+
+        preferencesChanged = false;
+    }
 }
