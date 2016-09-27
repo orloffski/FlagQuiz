@@ -6,11 +6,8 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -21,6 +18,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String CHOICES = "pref_numberOfChoices";
     public static final String REGIONS = "pref_regionsToInclude";
+    public static final String PREFS = "pref_changes";
 
     private boolean phoneDevice = true;
     private boolean preferencesChanged = true;
@@ -31,6 +29,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        if(savedInstanceState != null)
+            preferencesChanged = savedInstanceState.getBoolean(PREFS);
 
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(preferencesChangeListener);
@@ -46,16 +47,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
+    protected void onResume() {
+        super.onResume();
+
+        MainActivityFragment quizFragment  = (MainActivityFragment) getSupportFragmentManager().findFragmentById(R.id.quizFragment);
 
         if(preferencesChanged){
-            MainActivityFragment quizFragment  = (MainActivityFragment) getSupportFragmentManager().findFragmentById(R.id.quizFragment);
-            quizFragment.updateGuessRows(PreferenceManager.getDefaultSharedPreferences(this));
-            quizFragment.updateRegions(PreferenceManager.getDefaultSharedPreferences(this));
+            updateFragmentUI(quizFragment);
             quizFragment.resetQuiz();
             preferencesChanged = false;
+        }else{
+            updateFragmentUI(quizFragment);
+            quizFragment.loadOldData();
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putBoolean(PREFS, preferencesChanged);
     }
 
     @Override
@@ -107,4 +118,9 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(MainActivity.this, R.string.restarting_quiz, Toast.LENGTH_SHORT).show();
         }
     };
+
+    private void updateFragmentUI(MainActivityFragment quizFragment){
+        quizFragment.updateGuessRows(PreferenceManager.getDefaultSharedPreferences(this));
+        quizFragment.updateRegions(PreferenceManager.getDefaultSharedPreferences(this));
+    }
 }

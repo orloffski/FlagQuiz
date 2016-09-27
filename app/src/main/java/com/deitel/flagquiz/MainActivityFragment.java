@@ -2,20 +2,22 @@ package com.deitel.flagquiz;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
@@ -41,6 +43,12 @@ public class MainActivityFragment extends Fragment {
     private static final String TAG = "FlagQuiz Activity";
     private static final int FLAG_IN_QUIZ = 10;
 
+    private static final String FILENAMELIST = "fileNameList";
+    private static final String QUIZCOUNTRIESLIST = "quizCountriesList";
+    private static final String TOTALGUESSES = "totalGuesses";
+    private static final String CORRECTANSWERS = "correctAnswers";
+    private static final String GUESSROWS = "guessRows";
+
     private List<String> fileNameList;
     private List<String> quizCountriesList;
     private Set<String> regionsSet;
@@ -59,14 +67,19 @@ public class MainActivityFragment extends Fragment {
     private TextView answerTextView;
 
     @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        setRetainInstance(true);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
 
         View view = inflater.inflate(R.layout.fragment_main, container, false);
 
-        fileNameList = new ArrayList<>();
-        quizCountriesList = new ArrayList<>();
         random = new SecureRandom();
         handler = new Handler();
 
@@ -92,9 +105,33 @@ public class MainActivityFragment extends Fragment {
             }
         }
 
-        questionNumberTextView.setText(getString(R.string.question, 1, FLAG_IN_QUIZ));
+        if(savedInstanceState != null){
+            fileNameList = savedInstanceState.getStringArrayList(FILENAMELIST);
+            quizCountriesList = savedInstanceState.getStringArrayList(QUIZCOUNTRIESLIST);
+            totalGuesses = savedInstanceState.getInt(TOTALGUESSES);
+            correctAnswers = savedInstanceState.getInt(CORRECTANSWERS);
+            guessRows = savedInstanceState.getInt(GUESSROWS);
+
+            setQuestionNumber(correctAnswers + 1);
+        }else {
+            fileNameList = new ArrayList<>();
+            quizCountriesList = new ArrayList<>();
+
+            setQuestionNumber(1);
+        }
 
         return view;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putStringArrayList(FILENAMELIST, (ArrayList<String>) fileNameList);
+        outState.putStringArrayList(QUIZCOUNTRIESLIST, (ArrayList<String>) quizCountriesList);
+        outState.putInt(TOTALGUESSES, totalGuesses);
+        outState.putInt(CORRECTANSWERS, correctAnswers);
+        outState.putInt(GUESSROWS, guessRows);
     }
 
     public void updateGuessRows(SharedPreferences sharedPreferences){
@@ -147,15 +184,15 @@ public class MainActivityFragment extends Fragment {
             }
         }
 
-        loadNextFlag();
+        loadNextFlag(true);
     }
 
-    private void loadNextFlag(){
-        String nextImage = quizCountriesList.remove(0);
+    private void loadNextFlag(boolean newLoad){
+        String nextImage = quizCountriesList.get(0);
         correctAnswer = nextImage;
         answerTextView.setText("");
 
-        questionNumberTextView.setText(getString(R.string.question, (correctAnswers + 1), FLAG_IN_QUIZ));
+        setQuestionNumber(correctAnswers + 1);
 
         String region = nextImage.substring(0, nextImage.indexOf('-'));
 
@@ -165,15 +202,18 @@ public class MainActivityFragment extends Fragment {
             Drawable flag = Drawable.createFromStream(stream, nextImage);
             flagImageView.setImageDrawable(flag);
 
-            animate(false);
+            if(newLoad)
+                animate(false);
         }catch(IOException e){
             Log.e(TAG, "Error loading " + nextImage, e);
         }
 
-        Collections.shuffle(fileNameList);
+        if(newLoad) {
+            Collections.shuffle(fileNameList);
 
-        int correct = fileNameList.indexOf(correctAnswer);
-        fileNameList.add(fileNameList.remove(correct));
+            int correct = fileNameList.indexOf(correctAnswer);
+            fileNameList.add(fileNameList.remove(correct));
+        }
 
         for(int row = 0; row < guessRows; row++){
             for(int column = 0; column < guessLinearLayouts[row].getChildCount(); column++){
@@ -213,7 +253,7 @@ public class MainActivityFragment extends Fragment {
             animator.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    loadNextFlag();
+                    loadNextFlag(true);
                 }
             });
         }else{
@@ -224,7 +264,7 @@ public class MainActivityFragment extends Fragment {
         animator.start();
     }
 
-    private View.OnClickListener guessButtonListener = new View.OnClickListener() {
+    private OnClickListener guessButtonListener = new OnClickListener() {
         @Override
         public void onClick(View view) {
             Button guessButton = ((Button) view);
@@ -234,6 +274,7 @@ public class MainActivityFragment extends Fragment {
 
             if(guess.equals(answer)){
                 ++correctAnswers;
+                quizCountriesList.remove(0);
 
                 answerTextView.setText(answer + "!");
                 answerTextView.setTextColor(getResources().getColor(R.color.correct_ancwer, getContext().getTheme()));
@@ -286,5 +327,13 @@ public class MainActivityFragment extends Fragment {
                 guessRow.getChildAt(i).setEnabled(false);
             }
         }
+    }
+
+    private void setQuestionNumber(int number){
+        questionNumberTextView.setText(getString(R.string.question, number, FLAG_IN_QUIZ));
+    }
+
+    public void loadOldData(){
+        loadNextFlag(false);
     }
 }
