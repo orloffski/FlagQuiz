@@ -43,6 +43,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
     private static final String TOTALGUESSES = "totalGuesses";
     private static final String CORRECTANSWERS = "correctAnswers";
     private static final String GUESSROWS = "guessRows";
+    private static final String ANSWERS = "answers";
 
     private List<String> fileNameList;
     private List<String> quizCountriesList;
@@ -54,6 +55,8 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
     private SecureRandom random;
     private Handler handler;
     private Animation shakeAnimation;
+
+    private ArrayList<String> answers;
 
     private LinearLayout quizLinearLayout;
     private TextView questionNumberTextView;
@@ -96,7 +99,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         for(LinearLayout row : guessLinearLayouts){
             for(int column = 0; column < row.getChildCount(); column++){
                 Button button = (Button) row.getChildAt(column);
-                button.setOnClickListener(guessButtonListener);;
+                button.setOnClickListener(guessButtonListener);
             }
         }
 
@@ -106,11 +109,13 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
             totalGuesses = savedInstanceState.getInt(TOTALGUESSES);
             correctAnswers = savedInstanceState.getInt(CORRECTANSWERS);
             guessRows = savedInstanceState.getInt(GUESSROWS);
+            answers = savedInstanceState.getStringArrayList(ANSWERS);
 
             setQuestionNumber(correctAnswers + 1);
         }else {
             fileNameList = new ArrayList<>();
             quizCountriesList = new ArrayList<>();
+            answers = new ArrayList<>();
 
             setQuestionNumber(1);
         }
@@ -127,6 +132,16 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         outState.putInt(TOTALGUESSES, totalGuesses);
         outState.putInt(CORRECTANSWERS, correctAnswers);
         outState.putInt(GUESSROWS, guessRows);
+
+        answers.clear();
+        for(int row = 0; row < guessRows; row++){
+            for(int column = 0; column < guessLinearLayouts[row].getChildCount(); column++){
+                Button guessButton = (Button) guessLinearLayouts[row].getChildAt(column);
+
+                answers.add(guessButton.getText().toString());
+            }
+        }
+        outState.putStringArrayList(ANSWERS, answers);
     }
 
     public void updateGuessRows(SharedPreferences sharedPreferences){
@@ -208,24 +223,34 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
 
             int correct = fileNameList.indexOf(correctAnswer);
             fileNameList.add(fileNameList.remove(correct));
-        }
 
-        for(int row = 0; row < guessRows; row++){
-            for(int column = 0; column < guessLinearLayouts[row].getChildCount(); column++){
-                Button newGuessButton = (Button) guessLinearLayouts[row].getChildAt(column);
-                newGuessButton.setEnabled(true);
 
-                String filename = fileNameList.get((row * 2) + column);
-                newGuessButton.setText(getCountryName(filename));
+            for (int row = 0; row < guessRows; row++) {
+                for (int column = 0; column < guessLinearLayouts[row].getChildCount(); column++) {
+                    Button newGuessButton = (Button) guessLinearLayouts[row].getChildAt(column);
+                    newGuessButton.setEnabled(true);
+
+                    String filename = fileNameList.get((row * 2) + column);
+                    newGuessButton.setText(getCountryName(filename));
+                }
+            }
+
+            int row = random.nextInt(guessRows);
+            int column = random.nextInt(2);
+
+            LinearLayout randomRow = guessLinearLayouts[row];
+            String countryName = getCountryName(correctAnswer);
+            ((Button) randomRow.getChildAt(column)).setText(countryName);
+        }else{
+            for(int row = 0; row < guessRows; row++){
+                for(int column = 0; column < guessLinearLayouts[row].getChildCount(); column++){
+                    Button newGuessButton = (Button) guessLinearLayouts[row].getChildAt(column);
+                    newGuessButton.setEnabled(true);
+
+                    newGuessButton.setText(answers.remove(0));
+                }
             }
         }
-
-        int row = random.nextInt(guessRows);
-        int column = random.nextInt(2);
-
-        LinearLayout randomRow = guessLinearLayouts[row];
-        String countryName = getCountryName(correctAnswer);
-        ((Button) randomRow.getChildAt(column)).setText(countryName);
     }
 
     private String getCountryName(String name){
