@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
+import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.Nullable;
 import android.app.Fragment;
@@ -261,7 +262,14 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         if(correctAnswers == 0)
             return;
 
-        int centerX = (quizLinearLayout.getLeft() + quizLinearLayout.getRight()) / 2;
+        int centerX;
+
+        if(getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE){
+            centerX = (quizLinearLayout.getLeft() + quizLinearLayout.getRight()) / 4;
+        }else{
+            centerX = (quizLinearLayout.getLeft() + quizLinearLayout.getRight()) / 2;
+        }
+
         int centerY = (quizLinearLayout.getTop() + quizLinearLayout.getBottom()) / 2;
 
         int radius = Math.max(quizLinearLayout.getWidth(), quizLinearLayout.getHeight());
