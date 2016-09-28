@@ -265,7 +265,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         int centerX;
 
         if(getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE){
-            centerX = (quizLinearLayout.getLeft() + quizLinearLayout.getRight()) / 4;
+            centerX = (quizLinearLayout.getRight() - quizLinearLayout.getLeft()) / 2;
         }else{
             centerX = (quizLinearLayout.getLeft() + quizLinearLayout.getRight()) / 2;
         }
