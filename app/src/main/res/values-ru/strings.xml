@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">Викторина Флаг</string>
     <string name="action_settings">Настройки</string>
-    <string name="default_region">Северная_Америка</string>
     <string name="default_region_message">Должен быть выбран один регион. Установлен регион \"Северная_Америка\" как регион по умолчанию.</string>
     <string name="guess_country">Угадайте страну</string>
     <string name="image_description">Изображение текущего флага в викторине</string>

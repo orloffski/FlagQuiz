@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.app.Fragment;
 import android.os.Bundle;
@@ -27,8 +28,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -39,14 +43,15 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
     private static final String TAG = "FlagQuiz Activity";
     private static final int FLAG_IN_QUIZ = 10;
 
-    private static final String FILENAMELIST = "fileNameList";
     private static final String QUIZCOUNTRIESLIST = "quizCountriesList";
+    private static final String COUNTRIESLIST = "countriesList";
+    private static final String COUNTRIESNUMBERS = "countriesNumbers";
     private static final String TOTALGUESSES = "totalGuesses";
     private static final String CORRECTANSWERS = "correctAnswers";
     private static final String GUESSROWS = "guessRows";
     private static final String ANSWERS = "answers";
 
-    private List<String> fileNameList;
+    private LinkedHashMap<String, String> quizCountries;
     private List<String> quizCountriesList;
     private Set<String> regionsSet;
     private String correctAnswer;
@@ -105,7 +110,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         }
 
         if(savedInstanceState != null){
-            fileNameList = savedInstanceState.getStringArrayList(FILENAMELIST);
+            quizCountries = loadCountries(savedInstanceState, false);
             quizCountriesList = savedInstanceState.getStringArrayList(QUIZCOUNTRIESLIST);
             totalGuesses = savedInstanceState.getInt(TOTALGUESSES);
             correctAnswers = savedInstanceState.getInt(CORRECTANSWERS);
@@ -114,7 +119,8 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
 
             setQuestionNumber(correctAnswers + 1);
         }else {
-            fileNameList = new ArrayList<>();
+            updateRegions(PreferenceManager.getDefaultSharedPreferences(getActivity()));
+            quizCountries = loadCountries(null, true);
             quizCountriesList = new ArrayList<>();
             answers = new ArrayList<>();
 
@@ -128,7 +134,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        outState.putStringArrayList(FILENAMELIST, (ArrayList<String>) fileNameList);
+        saveCountries(quizCountries, outState);
         outState.putStringArrayList(QUIZCOUNTRIESLIST, (ArrayList<String>) quizCountriesList);
         outState.putInt(TOTALGUESSES, totalGuesses);
         outState.putInt(CORRECTANSWERS, correctAnswers);
@@ -161,20 +167,9 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
     }
 
     public void resetQuiz(){
-        AssetManager assets = getActivity().getAssets();
-        fileNameList.clear();
+        quizCountries.clear();
 
-        try{
-            for(String region : regionsSet){
-                String[] paths = assets.list(region);
-
-                for(String path : paths){
-                    fileNameList.add(path.replace(".png", ""));
-                }
-            }
-        }catch (IOException e){
-            Log.e(TAG, "Error loading image file names", e);
-        }
+        quizCountries = loadCountries(null, true);
 
         correctAnswers = 0;
         totalGuesses = 0;
@@ -182,12 +177,12 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         quizCountriesList.clear();
 
         int flagCounter = 1;
-        int numberOfFlags = fileNameList.size();
-        Log.e(TAG, "numberOfFlags " + numberOfFlags + ", flagCounter " + flagCounter);
+        int numberOfFlags = quizCountries.size();
+
         while(flagCounter <= FLAG_IN_QUIZ){
             int randomIndex = random.nextInt(numberOfFlags);
 
-            String filename = fileNameList.get(randomIndex);
+            String filename = (new ArrayList<>(quizCountries.values())).get(randomIndex);
 
             if(!quizCountriesList.contains(filename)){
                 quizCountriesList.add(filename);
@@ -205,11 +200,11 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
 
         setQuestionNumber(correctAnswers + 1);
 
-        String region = nextImage.substring(0, nextImage.indexOf('-'));
+        String region = getKeyByValue(quizCountries, nextImage);
 
         AssetManager assets = getActivity().getAssets();
 
-        try(InputStream stream = assets.open(region + "/" + nextImage + ".png")){
+        try(InputStream stream = assets.open(region + ".png")){
             Drawable flag = Drawable.createFromStream(stream, nextImage);
             flagImageView.setImageDrawable(flag);
 
@@ -220,19 +215,24 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         }
 
         if(newLoad) {
-            Collections.shuffle(fileNameList);
+            List<String> list = new ArrayList<>(quizCountries.keySet());
+            Collections.shuffle(list);
+            quizCountries = shuffleCountriesList(quizCountries, list);
 
-            int correct = fileNameList.indexOf(correctAnswer);
-            fileNameList.add(fileNameList.remove(correct));
+            String tmpKey = getKeyByValue(quizCountries, correctAnswer);
+            String tmpValue = quizCountries.get(tmpKey);
 
+            quizCountries.remove(tmpKey);
+            quizCountries.put(tmpKey, tmpValue);
 
             for (int row = 0; row < guessRows; row++) {
                 for (int column = 0; column < guessLinearLayouts[row].getChildCount(); column++) {
                     Button newGuessButton = (Button) guessLinearLayouts[row].getChildAt(column);
                     newGuessButton.setEnabled(true);
 
-                    String filename = fileNameList.get((row * 2) + column);
-                    newGuessButton.setText(getCountryName(filename));
+                    String filename = (new ArrayList<>(quizCountries.values())).get((row * 2) + column);
+                    filename = filename.replace('_', ' ').replace('=', '-');
+                    newGuessButton.setText(filename);
                 }
             }
 
@@ -240,7 +240,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
             int column = random.nextInt(2);
 
             LinearLayout randomRow = guessLinearLayouts[row];
-            String countryName = getCountryName(correctAnswer);
+            String countryName = correctAnswer;
             ((Button) randomRow.getChildAt(column)).setText(countryName);
         }else{
             for(int row = 0; row < guessRows; row++){
@@ -252,10 +252,6 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
                 }
             }
         }
-    }
-
-    private String getCountryName(String name){
-        return name.substring(name.indexOf('-') + 1).replace('_', ' ');
     }
 
     private void animate(boolean animateOut){
@@ -297,7 +293,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         public void onClick(View view) {
             Button guessButton = ((Button) view);
             String guess = guessButton.getText().toString();
-            String answer = getCountryName(correctAnswer);
+            String answer = correctAnswer;
             ++totalGuesses;
 
             if(guess.equals(answer)){
@@ -357,5 +353,85 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
         quizResults.setTargetFragment(this, 0);
         quizResults.setCancelable(false);
         quizResults.show(getFragmentManager(), quizResults.getClass().getName());
+    }
+
+    private void saveCountries(LinkedHashMap<String, String> quizCountries, Bundle outState){
+        ArrayList<String> numbers = new ArrayList<>();
+        ArrayList<String> list = new ArrayList<>();
+
+        for(Map.Entry<String, String> values : quizCountries.entrySet()){
+            numbers.add(values.getKey());
+            list.add(values.getValue());
+        }
+
+        outState.putStringArrayList(COUNTRIESNUMBERS, numbers);
+        outState.putStringArrayList(COUNTRIESLIST, list);
+    }
+
+    private LinkedHashMap<String, String> loadCountries(Bundle savedInstanceState, boolean firstLoad){
+        LinkedHashMap<String, String> countries = new LinkedHashMap<>();
+
+        if(!firstLoad) {
+            ArrayList<String> numbers;
+            ArrayList<String> list;
+
+            numbers = savedInstanceState.getStringArrayList(COUNTRIESNUMBERS);
+            list = savedInstanceState.getStringArrayList(COUNTRIESLIST);
+
+            for (int i = 0; i < numbers.size(); i++) {
+                countries.put(numbers.get(i), list.get(i));
+            }
+        }else{
+            ArrayList<String> tmpCountries = new ArrayList<>();
+
+            Log.d("regions", "regions count " + regionsSet.size() + " name " + regionsSet.toString());
+
+            for(String region : regionsSet){
+                tmpCountries.clear();
+
+                switch (region){
+                    case "region_1":
+                        tmpCountries.addAll(Arrays.asList(getResources().getStringArray(R.array.region_1)));
+                        break;
+                    case "region_2":
+                        tmpCountries.addAll(Arrays.asList(getResources().getStringArray(R.array.region_2)));
+                        break;
+                    case "region_3":
+                        tmpCountries.addAll(Arrays.asList(getResources().getStringArray(R.array.region_3)));
+                        break;
+                    case "region_4":
+                        tmpCountries.addAll(Arrays.asList(getResources().getStringArray(R.array.region_4)));
+                        break;
+                    case "region_5":
+                        tmpCountries.addAll(Arrays.asList(getResources().getStringArray(R.array.region_5)));
+                        break;
+                    case "region_6":
+                        tmpCountries.addAll(Arrays.asList(getResources().getStringArray(R.array.region_6)));
+                        break;
+                }
+
+                for(String line : tmpCountries)
+                    countries.put(region + "/" + line.substring(line.indexOf('-') + 1), line.substring(0, line.indexOf('-')));
+            }
+        }
+        return countries;
+    }
+
+    private String getKeyByValue(LinkedHashMap<String, String> quizCountries, String value){
+        for(Map.Entry<String, String> entry : quizCountries.entrySet())
+            if(value.equals(entry.getValue()))
+                return entry.getKey();
+
+        return null;
+    }
+
+    private LinkedHashMap<String, String> shuffleCountriesList(LinkedHashMap<String, String> quizCountries, List<String> list){
+        LinkedHashMap<String, String> newQuizCountries = new LinkedHashMap<>();
+
+        for(String keyValue : list){
+            newQuizCountries.put(keyValue, quizCountries.get(keyValue));
+        }
+
+        return newQuizCountries;
     }
 }
