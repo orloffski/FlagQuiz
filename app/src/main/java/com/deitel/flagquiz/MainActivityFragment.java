@@ -30,6 +30,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,8 @@ import java.util.Set;
  * A placeholder fragment containing a simple view.
  */
 public class MainActivityFragment extends Fragment implements FinishDialogFragment.OnResetQuizListener{
+
+    public static final String REGIONS = "pref_regionsToInclude";
 
     private static final String TAG = "FlagQuiz Activity";
     private static final int FLAG_IN_QUIZ = 10;
@@ -119,6 +122,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
 
             setQuestionNumber(correctAnswers + 1);
         }else {
+            regionsSet = new HashSet<>();
             updateRegions(PreferenceManager.getDefaultSharedPreferences(getActivity()));
             quizCountries = loadCountries(null, true);
             quizCountriesList = new ArrayList<>();
@@ -163,7 +167,12 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
     }
 
     public void updateRegions(SharedPreferences sharedPreferences){
-        regionsSet = sharedPreferences.getStringSet(MainActivity.REGIONS, null);
+        if(sharedPreferences.getStringSet(MainActivity.REGIONS, null) == null) {
+            regionsSet = new HashSet<>();
+            regionsSet.add("region_4");
+            sharedPreferences.edit().putStringSet(REGIONS, regionsSet).apply();
+        }else
+            regionsSet = sharedPreferences.getStringSet(MainActivity.REGIONS, null);
     }
 
     public void resetQuiz(){
@@ -194,8 +203,12 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
     }
 
     private void loadNextFlag(boolean newLoad){
+
+        if(answers.size() != guessRows * 2)
+            newLoad = true;
+
         String nextImage = quizCountriesList.get(0);
-        correctAnswer = nextImage;
+        correctAnswer = nextImage.replace('_', ' ').replace('=', '-');
         answerTextView.setText("");
 
         setQuestionNumber(correctAnswers + 1);
@@ -383,8 +396,6 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
             }
         }else{
             ArrayList<String> tmpCountries = new ArrayList<>();
-
-            Log.d("regions", "regions count " + regionsSet.size() + " name " + regionsSet.toString());
 
             for(String region : regionsSet){
                 tmpCountries.clear();

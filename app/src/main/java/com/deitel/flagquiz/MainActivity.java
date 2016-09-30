@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
@@ -108,11 +110,15 @@ public class MainActivity extends AppCompatActivity {
 
                     updateFragmentUI(quizFragment, false, true, true);
 
-                    Toast.makeText(MainActivity.this, R.string.default_region_message, Toast.LENGTH_SHORT).show();
+                    Toast toast = Toast.makeText(MainActivity.this, R.string.default_region_message, Toast.LENGTH_SHORT);
+                    toast.setGravity(Gravity.TOP, 0, 0);
+                    toast.show();
                 }
             }
 
-            Toast.makeText(MainActivity.this, R.string.restarting_quiz, Toast.LENGTH_SHORT).show();
+            Toast toast = Toast.makeText(MainActivity.this, R.string.restarting_quiz, Toast.LENGTH_SHORT);
+            toast.setGravity(Gravity.TOP, 0, 0);
+            toast.show();
         }
     };
 
@@ -123,11 +129,12 @@ public class MainActivity extends AppCompatActivity {
         if(updateRegions)
             quizFragment.updateRegions(PreferenceManager.getDefaultSharedPreferences(this));
 
-        if(resetQuiz)
+        if(resetQuiz) {
             quizFragment.resetQuiz();
-        else
+            preferencesChanged = false;
+        }
+        else {
             quizFragment.loadOldData();
-
-        preferencesChanged = false;
+        }
     }
 }
