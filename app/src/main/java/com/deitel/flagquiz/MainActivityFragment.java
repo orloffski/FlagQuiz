@@ -238,6 +238,8 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
             quizCountries.remove(tmpKey);
             quizCountries.put(tmpKey, tmpValue);
 
+            answers.clear();
+
             for (int row = 0; row < guessRows; row++) {
                 for (int column = 0; column < guessLinearLayouts[row].getChildCount(); column++) {
                     Button newGuessButton = (Button) guessLinearLayouts[row].getChildAt(column);
@@ -246,6 +248,7 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
                     String filename = (new ArrayList<>(quizCountries.values())).get((row * 2) + column);
                     filename = filename.replace('_', ' ').replace('=', '-');
                     newGuessButton.setText(filename);
+                    answers.add(filename);
                 }
             }
 
@@ -255,6 +258,8 @@ public class MainActivityFragment extends Fragment implements FinishDialogFragme
             LinearLayout randomRow = guessLinearLayouts[row];
             String countryName = correctAnswer;
             ((Button) randomRow.getChildAt(column)).setText(countryName);
+            answers.remove(row * 2 + column);
+            answers.add(row * 2 + column, countryName);
         }else{
             for(int row = 0; row < guessRows; row++){
                 for(int column = 0; column < guessLinearLayouts[row].getChildCount(); column++){
